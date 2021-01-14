@@ -43,7 +43,7 @@ const Main = {
             Main.data.currentWindow.webContents.send('onChangeCameraAuth', true)
         } else {
             systemPreferences.askForMediaAccess('camera').then((cameraAuth) => {
-                Main.data.currentWindow.webContents.send('onChangeCameraAuth', true)
+                Main.data.currentWindow.webContents.send('onChangeCameraAuth', cameraAuth)
             })
         }
     },
