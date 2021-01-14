@@ -1,0 +1,21 @@
+{
+    "name": "my-electron-app",
+    "version": "0.1.0",
+    "author": "your name",
+    "description": "My Electron app",
+    "main": "./src/main",
+    "scripts": {
+        "start": "electron .",
+        "build": "electron-packager ."
+    },
+    "devDependencies": {
+        "electron": "^11.1.1",
+        "electron-packager": "^15.2.0"
+    },
+    "dependencies": {
+        "@tensorflow-models/knn-classifier": "^1.2.2",
+        "@tensorflow-models/mobilenet": "^2.0.4",
+        "@tensorflow/tfjs": "^2.8.3",
+        "@tensorflow/tfjs-node": "^2.8.3"
+    }
+}
