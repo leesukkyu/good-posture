@@ -1,4 +1,0 @@
-# good-posture
-
-- Electron
-- TensorFlow

@@ -1,16 +1,23 @@
 <html>
     <body class="body">
-        <div id="console"></div>
-        <video autoplay playsinline muted id="webcam" width="224" height="224"></video>
-        <div>
-            <button id="class-a">좋은 자세 이미지 추가</button>
-            <button id="class-b">나쁜 자세 이미지 추가</button>
-        </div>
+        <div id="app" class="app">
+            <video id="webcam" autoplay playsinline muted width="224" height="224"></video>
 
-        <div class="select">
-            <select id="videoDeviceSelect"></select>
-        </div>
+            <div>
+                <button id="good-posture" class="action-btn">좋은 자세 이미지 추가</button>
+                <button id="bad-posture" class="action-btn">나쁜 자세 이미지 추가</button>
+                <button id="clear-posture" class="action-btn">데이터 초기화</button>
+            </div>
 
-        <script src="./renderer.js"></script>
+            <div class="select">
+                <select id="video-device-select"></select>
+            </div>
+
+            <div class="console-box">
+                <p id="result-box"></p>
+                <p id="console"></p>
+                <p class="cursor-arrow">><span class="cursor-underbar">_</span></p>
+            </div>
+        </div>
     </body>
 </html>

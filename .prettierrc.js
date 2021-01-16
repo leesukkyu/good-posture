@@ -4,8 +4,8 @@ module.exports = {
     useTabs: false,
     tabWidth: 4,
     bracketSpacing: false,
-    arrowParens: "always",
+    arrowParens: 'always',
     jsxBracketSameLine: true,
     printWidth: 120,
-    trailingComma: "all",
-};
+    trailingComma: 'all',
+}
