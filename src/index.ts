@@ -7,7 +7,7 @@ if (require('electron-squirrel-startup')) {
 
 interface MainInterface {
     data: {
-        isOpenNotification: boolean
+        openNotificationTimeStamp: number
         notification: Notification
         currentWindow: BrowserWindow
     }
@@ -19,7 +19,7 @@ interface MainInterface {
 
 const Main: MainInterface = {
     data: {
-        isOpenNotification: false,
+        openNotificationTimeStamp: 0,
         notification: null,
         currentWindow: null,
     },
@@ -37,13 +37,17 @@ const Main: MainInterface = {
         })
 
         ipcMain.on('notification', () => {
-            if (!Main.data.isOpenNotification) {
-                Main.data.isOpenNotification = true
-                Main.showNotification()
-            }
+            Main.showNotification()
         })
 
-        app.whenReady().then(Main.createWindow)
+        app.whenReady()
+            .then(() => {
+                Main.data.notification = new Notification({
+                    title: '자세가 바르지 않습니다.',
+                    body: '바른자세를 유지해주세요.',
+                })
+            })
+            .then(Main.createWindow)
     },
     createWindow() {
         const window = new BrowserWindow({
@@ -77,11 +81,10 @@ const Main: MainInterface = {
         }
     },
     showNotification() {
-        const options = {
-            title: '자세가 바르지 않습니다.',
-            body: '바른자세를 유지해주세요.',
+        if (new Date().getTime() - Main.data.openNotificationTimeStamp < 10000) {
+            return
         }
-        Main.data.notification = new Notification(options)
+        Main.data.openNotificationTimeStamp = new Date().getTime()
         Main.data.notification.show()
     },
 }
