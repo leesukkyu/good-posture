@@ -83,11 +83,59 @@ const Renderer: RendererInterface = {
     async app() {
         let classifier: knnClassifier.KNNClassifier = knnClassifier.create()
 
+        const net = await mobilenet.load()
+
         const getImageFromWebcam = () => {
             return tf.browser.fromPixels(Renderer.data.$webcamElement)
         }
 
-        const net = await mobilenet.load()
+        const save = () => {
+            const dataSet = classifier.getClassifierDataset()
+
+            if (dataSet['좋은 자세']) {
+                const t1Data = dataSet['좋은 자세'].dataSync()
+                const t1Shape = dataSet['좋은 자세'].shape
+                const t1DType = dataSet['좋은 자세'].dtype
+                localStorage.setItem('t1Data', t1Data.toString())
+                localStorage.setItem('t1Shape', t1Shape.toString())
+                localStorage.setItem('t1DType', t1DType)
+            }
+            if (dataSet['나쁜 자세']) {
+                const t2Data = dataSet['나쁜 자세'].dataSync()
+                const t2Shape = dataSet['나쁜 자세'].shape
+                const t2DType = dataSet['나쁜 자세'].dtype
+                localStorage.setItem('t2Data', t2Data.toString())
+                localStorage.setItem('t2Shape', t2Shape.toString())
+                localStorage.setItem('t2DType', t2DType)
+            }
+        }
+
+        const load = () => {
+            const t1Data = localStorage.getItem('t1Data')
+            const t1Shape = localStorage.getItem('t1Shape')
+            const t1DType = localStorage.getItem('t1DType')
+            const t2Data = localStorage.getItem('t2Data')
+            const t2Shape = localStorage.getItem('t2Shape')
+            const t2DType = localStorage.getItem('t2DType')
+            if (t1Data && t1Shape && t1DType && t2Data && t2Shape && t2DType) {
+                try {
+                    classifier.setClassifierDataset({
+                        '좋은 자세': tf.tensor(
+                            t1Data.split(',').map((item) => +item),
+                            [+t1Shape.split(',')[0], +t1Shape.split(',')[1]],
+                            t1DType as 'string' | 'float32' | 'int32' | 'bool' | 'complex64',
+                        ),
+                        '나쁜 자세': tf.tensor(
+                            t2Data.split(',').map((item) => +item),
+                            [+t2Shape.split(',')[0], +t2Shape.split(',')[1]],
+                            t2DType as 'string' | 'float32' | 'int32' | 'bool' | 'complex64',
+                        ),
+                    })
+                } catch (error) {
+                    clearModel()
+                }
+            }
+        }
 
         const addModel = async (classId: string) => {
             const img = getImageFromWebcam()
@@ -95,18 +143,24 @@ const Renderer: RendererInterface = {
             classifier.addExample(activation, classId)
             img.dispose()
             document.getElementById('console').innerText += `${classId} 이미지 추가\n`
+            save()
+        }
+
+        const clearModel = () => {
+            Promise.resolve().then(() => {
+                classifier.dispose()
+                classifier = knnClassifier.create()
+                Renderer.data.$console.innerText = ''
+                Renderer.data.$resultBox.innerText = ''
+                localStorage.clear()
+            })
         }
 
         const addEventListener = () => {
             document.getElementById('good-posture').addEventListener('click', () => addModel('좋은 자세'))
             document.getElementById('bad-posture').addEventListener('click', () => addModel('나쁜 자세'))
             document.getElementById('clear-posture').addEventListener('click', () => {
-                Promise.resolve().then(() => {
-                    classifier.dispose()
-                    classifier = knnClassifier.create()
-                    Renderer.data.$console.innerText = ''
-                    Renderer.data.$resultBox.innerText = ''
-                })
+                clearModel()
             })
         }
 
@@ -130,6 +184,7 @@ const Renderer: RendererInterface = {
             window.requestAnimationFrame(loop)
         }
 
+        load()
         addEventListener()
         window.requestAnimationFrame(loop)
     },

@@ -57,6 +57,7 @@ const Main: MainInterface = {
                 nodeIntegration: true,
             },
             show: false,
+            skipTaskbar: true,
         })
 
         window.loadURL(MAIN_WINDOW_WEBPACK_ENTRY)
