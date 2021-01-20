@@ -1,0 +1,101 @@
+body {
+    background-color: #292a2d;
+    padding: 10px;
+}
+.app {
+    text-align: center;
+
+    .vm {
+        vertical-align: middle;
+    }
+
+    .select {
+        margin: 7px 0 7px 0;
+    }
+
+    .action-btn {
+        margin: 0 3px 0 3px;
+    }
+
+    .console-box {
+        font: 10px Inconsolata, monospace;
+        color: #fff;
+        text-shadow: 0 0 5px #c8c8c8;
+
+        .cursor-arrow {
+            animation: type 0.5s 10.75s steps(20, end) forwards;
+        }
+
+        .cursor-underbar {
+            animation: blink 1s 8.5s infinite;
+        }
+    }
+
+    .range-info-text {
+        font: 12px Inconsolata, monospace;
+        color: #fff;
+        text-shadow: 0 0 5px #c8c8c8;
+        margin: 13px 0 1px 0;
+    }
+
+    .range-translate-text {
+        font: 10px Inconsolata, monospace;
+        color: #fff;
+        text-shadow: 0 0 5px #c8c8c8;
+    }
+
+    .help-image {
+        width: 16px;
+    }
+
+    .range-input {
+        -webkit-appearance: none;
+        margin: 18px 0;
+        width: 240px;
+        background: transparent;
+    }
+    .range-input:focus {
+        outline: none;
+    }
+    .range-input::-webkit-slider-runnable-track {
+        width: 240px;
+        height: 8px;
+        cursor: pointer;
+        background: #43cf5c;
+        border-radius: 5px;
+    }
+    .range-input::-webkit-slider-thumb {
+        text-shadow: 0 0 5px #c8c8c8;
+        height: 24px;
+        width: 15px;
+        border-radius: 12px;
+        background: #efefef;
+        cursor: pointer;
+        -webkit-appearance: none;
+        margin-top: -7px;
+    }
+}
+
+@keyframes blink {
+    0% {
+        opacity: 0;
+    }
+    40% {
+        opacity: 0;
+    }
+    50% {
+        opacity: 1;
+    }
+    90% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+
+@keyframes type {
+    to {
+        width: 17em;
+    }
+}

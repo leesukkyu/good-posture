@@ -9,6 +9,40 @@
                 <button id="clear-posture" class="action-btn">데이터 초기화</button>
             </div>
 
+            <div>
+                <div class="range-info-text">
+                    <span class="vm">민감도 설정</span>
+                    <span id="responsive-level-translate" class="range-translate-text"></span>
+                    <img
+                        src="/images/help.svg"
+                        class="vm help-image"
+                        title="민감도가 높을수록 조금만 잘못된 자세여도 알람이 울리게 됩니다."
+                    />
+                </div>
+                <input type="range" id="responsive-level" class="range-input" min="1" max="10" step="1" />
+            </div>
+
+            <div>
+                <div class="range-info-text">
+                    <span class="vm">스누즈 시간 설정</span>
+                    <span id="snooze-time-translate" class="range-translate-text"></span>
+                    <img
+                        src="/images/help.svg"
+                        class="vm help-image"
+                        title="알림간의 간격입니다. 한번 알림이 울리고 다음번 알림이 울리기 전, 자세를 고쳐 잡는 시간을 정할 수 있습니다."
+                    />
+                </div>
+                <input
+                    type="range"
+                    id="snooze-time"
+                    class="range-input"
+                    min="10"
+                    max="600"
+                    step="10"
+                    placeholder="초"
+                />
+            </div>
+
             <div class="select">
                 <select id="video-device-select"></select>
             </div>
