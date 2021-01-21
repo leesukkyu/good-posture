@@ -78,7 +78,6 @@ const Main: MainInterface = {
         })
 
         ipcMain.on('onChangeSnoozeTime', (e, localSnoozeTime) => {
-            console.log(+localSnoozeTime)
             Main.data.snoozeTime = +localSnoozeTime
         })
     },

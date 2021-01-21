@@ -82,6 +82,8 @@ const Renderer: RendererInterface = {
     async app() {
         let classifier: knnClassifier.KNNClassifier = knnClassifier.create()
 
+        let responsiveLevel
+
         const net = await mobilenet.load()
 
         const getImageFromWebcam = () => {
@@ -174,6 +176,7 @@ const Renderer: RendererInterface = {
             document.getElementById('responsive-level').addEventListener('change', (e) => {
                 const target = e.target as HTMLInputElement
                 localStorage.setItem('responsiveLevel', target.value)
+                responsiveLevel = target.value
                 document.getElementById('responsive-level-translate').innerText = `${target.value}/10`
                 ipcRenderer.send('onChangeResponsiveLevel', target.value)
             })
@@ -188,7 +191,7 @@ const Renderer: RendererInterface = {
         }
 
         const setResponsiveLevel = () => {
-            let responsiveLevel = localStorage.getItem('responsiveLevel')
+            responsiveLevel = localStorage.getItem('responsiveLevel')
             responsiveLevel = responsiveLevel ? responsiveLevel : '7'
             const target = document.getElementById('responsive-level') as HTMLInputElement
             target.value = responsiveLevel
@@ -211,12 +214,22 @@ const Renderer: RendererInterface = {
         load()
         addEventListener()
 
+        const resultCheck = (result) => {
+            const isBad = result.label === MODEL_TYPE.BAD
+            console.log(responsiveLevel / 10)
+            console.log(result.confidences[result.label])
+            if (!isBad) {
+                return false
+            }
+            return responsiveLevel / 10 < result.confidences[result.label]
+        }
+
         while (true) {
             if (classifier.getNumClasses() > 0) {
                 const img = getImageFromWebcam()
                 const activation = net.infer(img, true)
                 const result = await classifier.predictClass(activation)
-                Renderer.data.$resultBox.innerText = `현재 자세: ${result.label}\n`
+                Renderer.data.$resultBox.innerText = `현재 자세: ${resultCheck(result) ? '나쁜 자세' : '좋은 자세'}\n`
                 img.dispose()
             }
             await tf.nextFrame()

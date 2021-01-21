@@ -107,6 +107,8 @@ const Renderer: RendererInterface = {
 
         const resultCheck = (result) => {
             const isBad = result.label === MODEL_TYPE.BAD
+            console.log(responsiveLevel / 10)
+            console.log(result.confidences[result.label])
             if (!isBad) {
                 return false
             }
