@@ -1,7 +1,7 @@
 <html>
     <body class="body">
         <div id="app" class="app">
-            <video id="webcam" autoplay playsinline muted width="224" height="224"></video>
+            <video id="video" autoplay playsinline muted width="224" height="224"></video>
 
             <div>
                 <button id="good-posture" class="action-btn">좋은 자세 이미지 추가</button>
@@ -12,9 +12,9 @@
             <div>
                 <div class="range-info-text">
                     <span class="vm">민감도 설정</span>
-                    <span id="responsive-level-translate" class="range-translate-text"></span>
+                    <span id="responsive-level-translate-text" class="range-translate-text"></span>
                     <img
-                        src="/images/help.svg"
+                        src="/assets/help.svg"
                         class="vm help-image"
                         title="민감도가 높을수록 조금만 잘못된 자세여도 알람이 울리게 됩니다."
                     />
@@ -25,9 +25,9 @@
             <div>
                 <div class="range-info-text">
                     <span class="vm">스누즈 시간 설정</span>
-                    <span id="snooze-time-translate" class="range-translate-text"></span>
+                    <span id="snooze-time-translate-text" class="range-translate-text"></span>
                     <img
-                        src="/images/help.svg"
+                        src="/assets/help.svg"
                         class="vm help-image"
                         title="알림간의 간격입니다. 한번 알림이 울리고 다음번 알림이 울리기 전, 자세를 고쳐 잡는 시간을 정할 수 있습니다."
                     />
@@ -48,9 +48,19 @@
             </div>
 
             <div class="console-box">
-                <p id="result-box"></p>
+                <p id="status-box"></p>
                 <p id="console"></p>
                 <p class="cursor-arrow">><span class="cursor-underbar">_</span></p>
+            </div>
+        </div>
+        <div class="loading-wrap" id="loading-wrap">
+            <div class="loading-box">
+                <div class="lds-ellipsis">
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                </div>
             </div>
         </div>
     </body>

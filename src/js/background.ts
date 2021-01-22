@@ -13,7 +13,7 @@ type dType = 'string' | 'float32' | 'int32' | 'bool' | 'complex64'
 
 interface RendererInterface {
     data: {
-        $webcamElement: HTMLVideoElement
+        $videoElement: HTMLVideoElement
         stream: MediaStream
     }
     init: () => void
@@ -23,7 +23,7 @@ interface RendererInterface {
 
 const Renderer: RendererInterface = {
     data: {
-        $webcamElement: <HTMLVideoElement>document.getElementById('webcam'),
+        $videoElement: <HTMLVideoElement>document.getElementById('video'),
         stream: null,
     },
     init() {
@@ -35,7 +35,7 @@ const Renderer: RendererInterface = {
     async initCamera() {
         const getWebcamStream = async (options) => {
             const stream = await navigator.mediaDevices.getUserMedia(options)
-            Renderer.data.$webcamElement.srcObject = stream
+            Renderer.data.$videoElement.srcObject = stream
             Renderer.data.stream = stream
         }
         try {
@@ -49,25 +49,24 @@ const Renderer: RendererInterface = {
 
     // 텐서플로 관리
     async app() {
+        let stopLoop = false
+
         let classifier: knnClassifier.KNNClassifier = knnClassifier.create()
 
         let responsiveLevel = 0
 
+        let currentStatus: boolean
+
         const net = await mobilenet.load()
 
-        const getImageFromWebcam = () => {
-            return tf.browser.fromPixels(Renderer.data.$webcamElement)
-        }
-
-        ipcRenderer.on('onChangeLocalstorage', (e) => {
+        ipcRenderer.on('onChangeLocalstorage', () => {
             classifier.dispose()
             classifier = knnClassifier.create()
             load()
         })
 
-        ipcRenderer.on('onChangeResponsiveLevel', (e) => {
-            responsiveLevel = +localStorage.getItem('responsiveLevel')
-            console.log(responsiveLevel)
+        ipcRenderer.on('onChangeResponsiveLevel', () => {
+            responsiveLevel = calcResponsiveLevel(localStorage.getItem('responsiveLevel'))
         })
 
         const load = () => {
@@ -105,37 +104,55 @@ const Renderer: RendererInterface = {
             })
         }
 
-        const resultCheck = (result) => {
+        const checkStatus = (result) => {
             const isBad = result.label === MODEL_TYPE.BAD
-            console.log(responsiveLevel / 10)
-            console.log(result.confidences[result.label])
+            if (currentStatus !== isBad) {
+                currentStatus = isBad
+                ipcRenderer.send('onChangeStatus', currentStatus ? MODEL_TYPE.BAD : MODEL_TYPE.GOOD)
+            }
             if (!isBad) {
                 return false
             }
-            return responsiveLevel / 10 < result.confidences[result.label]
+            return responsiveLevel <= result.confidences[result.label]
         }
 
         const setResponsiveLevel = () => {
-            const newResponsiveLevel = +localStorage.getItem('responsiveLevel')
-            responsiveLevel = newResponsiveLevel ? newResponsiveLevel : 7
+            const newResponsiveLevel = localStorage.getItem('responsiveLevel')
+            responsiveLevel = calcResponsiveLevel(newResponsiveLevel)
+        }
+
+        const calcResponsiveLevel = (newResponsiveLevel) => {
+            let data = +newResponsiveLevel
+            data = data ? data / 10 : 7 / 10
+            data = 1 - data
+            return data
+        }
+
+        const start = async () => {
+            while (true) {
+                if (stopLoop) {
+                    break
+                }
+                if (classifier.getNumClasses() > 0) {
+                    const img = tf.browser.fromPixels(Renderer.data.$videoElement)
+                    const activation = net.infer(img, true)
+                    const result = await classifier.predictClass(activation)
+                    if (checkStatus(result)) {
+                        ipcRenderer.send('notification')
+                    }
+                    img.dispose()
+                }
+                await tf.nextFrame()
+            }
+        }
+
+        const stop = () => {
+            stopLoop = true
         }
 
         setResponsiveLevel()
         load()
-
-        while (true) {
-            if (classifier.getNumClasses() > 0) {
-                const img = getImageFromWebcam()
-
-                const activation = net.infer(img, true)
-                const result = await classifier.predictClass(activation)
-                if (resultCheck(result)) {
-                    ipcRenderer.send('notification')
-                }
-                img.dispose()
-            }
-            await tf.nextFrame()
-        }
+        start()
     },
 }
 

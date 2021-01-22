@@ -10,8 +10,8 @@ interface RendererInterface {
 const Renderer: RendererInterface = {
     init() {
         ipcRenderer.on('onChangeCameraAuthForward', (e: electron.IpcRendererEvent, cameraAuth: boolean) => {
+            console.log('이벤트 받음')
             if (cameraAuth) {
-                console.log('이벤트 받음')
                 Forward.init()
             }
         })

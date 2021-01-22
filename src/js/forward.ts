@@ -4,19 +4,23 @@ import * as mobilenet from '@tensorflow-models/mobilenet'
 import * as knnClassifier from '@tensorflow-models/knn-classifier'
 import * as electron from 'electron'
 import {MODEL_TYPE} from '../ini'
-import {checkLocalStorageSpace} from './util'
+import {checkLocalStorageSpace, translateTimeStamp} from './util'
 import CustomError from './error'
+import {dType} from '../types'
 import '../styles/index.scss'
 
 const {ipcRenderer} = electron
 
-type dType = 'string' | 'float32' | 'int32' | 'bool' | 'complex64'
-
 interface RendererInterface {
     data: {
+        $videoSelect: HTMLSelectElement
         $console: HTMLElement
-        $resultBox: HTMLElement
-        $webcamElement: HTMLVideoElement
+        $statusBox: HTMLElement
+        $responsiveLevel: HTMLInputElement
+        $responsiveLevelText: HTMLElement
+        $videoElement: HTMLVideoElement
+        $snoozeTime: HTMLInputElement
+        $snoozeTimeText: HTMLElement
         stream: MediaStream
     }
     init: () => void
@@ -26,20 +30,27 @@ interface RendererInterface {
 
 const Renderer: RendererInterface = {
     data: {
+        $videoSelect: <HTMLSelectElement>document.getElementById('video-device-select'),
         $console: <HTMLElement>document.getElementById('console'),
-        $resultBox: <HTMLElement>document.getElementById('result-box'),
-        $webcamElement: <HTMLVideoElement>document.getElementById('webcam'),
+        $statusBox: <HTMLElement>document.getElementById('status-box'),
+        $videoElement: <HTMLVideoElement>document.getElementById('video'),
+        $responsiveLevel: <HTMLInputElement>document.getElementById('responsive-level'),
+        $responsiveLevelText: <HTMLElement>document.getElementById('responsive-level-translate-text'),
+        $snoozeTime: <HTMLInputElement>document.getElementById('snooze-time'),
+        $snoozeTimeText: <HTMLElement>document.getElementById('snooze-time-translate-text'),
         stream: null,
     },
-    init() {
-        Renderer.initCamera()
-        Renderer.app()
+    async init() {
+        await Renderer.initCamera()
+        await Renderer.app()
+        ipcRenderer.on('onChangeStatus', (e, status) => {
+            Renderer.data.$statusBox.innerText = status
+        })
+        document.getElementById('loading-wrap').remove()
     },
 
     // 카메라 관리
     async initCamera() {
-        const $videoSelect = <HTMLSelectElement>document.getElementById('video-device-select')
-
         const createWebcamSelectOption = async () => {
             let index = 0
             const deviceList = await navigator.mediaDevices.enumerateDevices()
@@ -48,7 +59,7 @@ const Renderer: RendererInterface = {
                     const $option = document.createElement('option')
                     $option.value = device.deviceId
                     $option.text = device.label || `카메라 ${++index}`
-                    $videoSelect.appendChild($option)
+                    Renderer.data.$videoSelect.appendChild($option)
                 }
             })
         }
@@ -59,18 +70,18 @@ const Renderer: RendererInterface = {
                     track.stop()
                 })
             }
-            const videoSource = $videoSelect.value
+            const videoSource = Renderer.data.$videoSelect.value
             const options = {
                 video: {deviceId: videoSource ? {exact: videoSource} : undefined},
             }
             const stream = await navigator.mediaDevices.getUserMedia(options)
-            Renderer.data.$webcamElement.srcObject = stream
+            Renderer.data.$videoElement.srcObject = stream
             Renderer.data.stream = stream
             ipcRenderer.send('onChangeMediaDevice', options)
         }
 
         try {
-            $videoSelect.addEventListener('change', getWebcamStream)
+            Renderer.data.$videoSelect.addEventListener('change', getWebcamStream)
             await createWebcamSelectOption()
             await getWebcamStream()
         } catch (err) {
@@ -82,19 +93,22 @@ const Renderer: RendererInterface = {
     async app() {
         let classifier: knnClassifier.KNNClassifier = knnClassifier.create()
 
-        let responsiveLevel
-
         const net = await mobilenet.load()
 
-        const getImageFromWebcam = () => {
-            return tf.browser.fromPixels(Renderer.data.$webcamElement)
-        }
-
-        const changeLocalstorage = () => {
+        const onChangeLocalstorage = () => {
             ipcRenderer.send('onChangeLocalstorage')
         }
 
-        const save = () => {
+        const onChangeResponsiveLevel = (responsiveLevel) => {
+            ipcRenderer.send('onChangeResponsiveLevel', responsiveLevel)
+        }
+
+        const onChangeSnoozeTime = (snoozeTime) => {
+            ipcRenderer.send('onChangeSnoozeTime', snoozeTime)
+        }
+
+        // 텐서 데이터 저장
+        const tensorSave = () => {
             const dataSet = classifier.getClassifierDataset()
 
             if (dataSet[MODEL_TYPE.GOOD]) {
@@ -113,10 +127,11 @@ const Renderer: RendererInterface = {
                 localStorage.setItem('t2Shape', t2Shape.toString())
                 localStorage.setItem('t2DType', t2DType)
             }
-            changeLocalstorage()
+            onChangeLocalstorage()
         }
 
-        const load = () => {
+        // 텐서 데이터 로드
+        const tensorLoad = () => {
             const t1Data = localStorage.getItem('t1Data')
             const t1Shape = localStorage.getItem('t1Shape')
             const t1DType = localStorage.getItem('t1DType')
@@ -143,30 +158,33 @@ const Renderer: RendererInterface = {
             }
         }
 
+        // 모델 추가
         const addModel = async (classId: string) => {
             if (checkLocalStorageSpace()) {
-                const img = getImageFromWebcam()
+                const img = tf.browser.fromPixels(Renderer.data.$videoElement)
                 const activation = net.infer(img, true)
                 classifier.addExample(activation, classId)
                 img.dispose()
                 document.getElementById('console').innerText += `${classId} 이미지 추가\n`
-                save()
+                tensorSave()
             } else {
                 console.log('스토리지 꽉찼다.')
             }
         }
 
+        // 모델 삭제
         const clearModel = () => {
             Promise.resolve().then(() => {
                 classifier.dispose()
                 classifier = knnClassifier.create()
                 Renderer.data.$console.innerText = ''
-                Renderer.data.$resultBox.innerText = ''
+                Renderer.data.$statusBox.innerText = ''
                 localStorage.clear()
-                changeLocalstorage()
+                onChangeLocalstorage()
             })
         }
 
+        // 리스너 설정
         const addEventListener = () => {
             document.getElementById('good-posture').addEventListener('click', () => addModel(MODEL_TYPE.GOOD))
             document.getElementById('bad-posture').addEventListener('click', () => addModel(MODEL_TYPE.BAD))
@@ -174,66 +192,45 @@ const Renderer: RendererInterface = {
                 clearModel()
             })
             document.getElementById('responsive-level').addEventListener('change', (e) => {
-                const target = e.target as HTMLInputElement
-                localStorage.setItem('responsiveLevel', target.value)
-                responsiveLevel = target.value
-                document.getElementById('responsive-level-translate').innerText = `${target.value}/10`
-                ipcRenderer.send('onChangeResponsiveLevel', target.value)
+                const {value} = e.target as HTMLInputElement
+                localStorage.setItem('responsiveLevel', value)
+                Renderer.data.$responsiveLevelText.innerText = `${value}/10`
+                onChangeResponsiveLevel(value)
             })
             document.getElementById('snooze-time').addEventListener('change', (e) => {
-                const target = e.target as HTMLInputElement
-                localStorage.setItem('snoozeTime', target.value)
-                document.getElementById('snooze-time-translate').innerText = `${Math.floor(+target.value / 60)}분 ${
-                    +target.value % 60
-                }초`
-                ipcRenderer.send('onChangeSnoozeTime', target.value)
+                const {value} = e.target as HTMLInputElement
+                localStorage.setItem('snoozeTime', value)
+                Renderer.data.$snoozeTimeText.innerText = translateTimeStamp(+value)
+                onChangeSnoozeTime(value)
             })
         }
 
-        const setResponsiveLevel = () => {
-            responsiveLevel = localStorage.getItem('responsiveLevel')
-            responsiveLevel = responsiveLevel ? responsiveLevel : '7'
-            const target = document.getElementById('responsive-level') as HTMLInputElement
-            target.value = responsiveLevel
-            document.getElementById('responsive-level-translate').innerText = `${responsiveLevel}/10`
+        // 초기 민감도 세팅
+        const initResponsiveLevel = () => {
+            const responsiveLevel = localStorage.getItem('responsiveLevel') || '7'
+            Renderer.data.$responsiveLevel.value = responsiveLevel
+            Renderer.data.$responsiveLevelText.innerText = `${responsiveLevel}/10`
         }
 
-        const setSnoozeTime = () => {
-            let localSnoozeTime = localStorage.getItem('snoozeTime')
-            localSnoozeTime = localSnoozeTime ? localSnoozeTime : '60'
-            const target = document.getElementById('snooze-time') as HTMLInputElement
-            target.value = localSnoozeTime
-            document.getElementById('snooze-time-translate').innerText = `${Math.floor(+localSnoozeTime / 60)}분 ${
-                +localSnoozeTime % 60
-            }초`
-            ipcRenderer.send('onChangeSnoozeTime', localSnoozeTime)
+        // 초기 스누즈 세팅
+        const initSnoozeTime = () => {
+            const snoozeTime = localStorage.getItem('snoozeTime') || '60'
+            Renderer.data.$snoozeTime.value = snoozeTime
+            Renderer.data.$snoozeTimeText.innerText = translateTimeStamp(+snoozeTime)
+            onChangeSnoozeTime(snoozeTime)
         }
 
-        setResponsiveLevel()
-        setSnoozeTime()
-        load()
+        initResponsiveLevel()
+        initSnoozeTime()
+        tensorLoad()
         addEventListener()
 
-        const resultCheck = (result) => {
-            const isBad = result.label === MODEL_TYPE.BAD
-            console.log(responsiveLevel / 10)
-            console.log(result.confidences[result.label])
-            if (!isBad) {
-                return false
-            }
-            return responsiveLevel / 10 < result.confidences[result.label]
+        let count = 0
+        const test = () => {
+            console.log(count++)
+            requestAnimationFrame(test)
         }
-
-        while (true) {
-            if (classifier.getNumClasses() > 0) {
-                const img = getImageFromWebcam()
-                const activation = net.infer(img, true)
-                const result = await classifier.predictClass(activation)
-                Renderer.data.$resultBox.innerText = `현재 자세: ${resultCheck(result) ? '나쁜 자세' : '좋은 자세'}\n`
-                img.dispose()
-            }
-            await tf.nextFrame()
-        }
+        requestAnimationFrame(test)
     },
 }
 

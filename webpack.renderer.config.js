@@ -17,8 +17,8 @@ module.exports = {
         new CopyPlugin({
             patterns: [
                 {
-                    from: path.resolve(__dirname, 'src', 'images'),
-                    to: path.resolve(__dirname, '.webpack', 'renderer/images'),
+                    from: path.resolve(__dirname, 'src', 'assets'),
+                    to: 'assets',
                 },
             ],
         }),
