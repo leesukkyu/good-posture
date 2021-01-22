@@ -2,6 +2,8 @@ import {app, BrowserWindow, Notification, systemPreferences, ipcMain, Menu, Tray
 import {NOTIFICATION_OPT, MODEL_TYPE} from './ini'
 import path from 'path'
 import express from 'express'
+import {Server} from 'http'
+import {AddressInfo} from 'net'
 
 declare const MAIN_WINDOW_WEBPACK_ENTRY: string
 
@@ -29,7 +31,7 @@ interface MainInterface {
         tray: Tray
         forceQuit: boolean
         mediaDeviceOpt: unknown
-        server: Express
+        server: Server
     }
     init: () => void
     createForwardWindow: () => void
@@ -133,7 +135,9 @@ const Main: MainInterface = {
             const exApp = express()
             exApp.use(express.static(path.resolve(__dirname, '..', 'renderer')))
             Main.data.server = exApp.listen(53079, () => {
-                Main.data.mainWindow.loadURL(`http://localhost:${Main.data.server.address().port}/main_window/`)
+                Main.data.mainWindow.loadURL(
+                    `http://localhost:${(Main.data.server.address() as AddressInfo).port}/main_window/`,
+                )
             })
         }
 
@@ -169,7 +173,9 @@ const Main: MainInterface = {
             Main.data.backgroundWindow.loadURL(MAIN_WINDOW_WEBPACK_ENTRY)
             Main.data.backgroundWindow.webContents.openDevTools()
         } else {
-            Main.data.backgroundWindow.loadURL(`http://localhost:${Main.data.server.address().port}/main_window/`)
+            Main.data.backgroundWindow.loadURL(
+                `http://localhost:${(Main.data.server.address() as AddressInfo).port}/main_window/`,
+            )
             Main.data.backgroundWindow.webContents.openDevTools()
         }
 
