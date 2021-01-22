@@ -28,6 +28,8 @@ interface MainInterface {
         backgroundWindow: BrowserWindow
         tray: Tray
         forceQuit: boolean
+        mediaDeviceOpt: unknown
+        server: Express
     }
     init: () => void
     createForwardWindow: () => void
@@ -45,14 +47,21 @@ const Main: MainInterface = {
         backgroundWindow: null,
         tray: null,
         forceQuit: false,
+        mediaDeviceOpt: null,
+        server: null,
     },
     init() {
         ipcMain.on('notification', () => {
             Main.showNotification()
         })
 
-        ipcMain.on('onChangeMediaDevice', (e, options) => {
-            Main.data.backgroundWindow.webContents.send('onChangeMediaDevice', options)
+        ipcMain.on('onChangeMediaDevice', (e, mediaDeviceOpt) => {
+            Main.data.mediaDeviceOpt = mediaDeviceOpt
+            Main.data.backgroundWindow.webContents.send('onChangeMediaDevice', mediaDeviceOpt)
+        })
+
+        ipcMain.on('onRequestMediaDeviceOpt', () => {
+            Main.data.backgroundWindow.webContents.send('onChangeMediaDevice', Main.data.mediaDeviceOpt)
         })
 
         ipcMain.on('onChangeLocalstorage', () => {
@@ -91,19 +100,18 @@ const Main: MainInterface = {
 
         app.whenReady()
             .then(() => {
-                tray = new Tray('/Users/user/Desktop/git/good-posture/src/assets/icon.png')
+                tray = new Tray(path.resolve(__dirname, '..', 'renderer/assets/icon.png'))
                 tray.setTitle('')
             })
             .then(() => {
                 Main.data.notification = new Notification({
                     title: NOTIFICATION_OPT.TITLE,
                     body: NOTIFICATION_OPT.BODY,
-                    icon: '/Users/user/Desktop/git/good-posture/src/assets/icon.png',
+                    icon: path.resolve(__dirname, '..', 'renderer/assets/icon.png'),
                 })
             })
             .then(() => {
                 Main.createForwardWindow()
-                Main.createBackgroundWindow()
             })
     },
     createForwardWindow() {
@@ -124,8 +132,8 @@ const Main: MainInterface = {
         } else {
             const exApp = express()
             exApp.use(express.static(path.resolve(__dirname, '..', 'renderer')))
-            const server = exApp.listen(0, () => {
-                Main.data.mainWindow.loadURL(`http://localhost:${server.address().port}/main_window/`)
+            Main.data.server = exApp.listen(53079, () => {
+                Main.data.mainWindow.loadURL(`http://localhost:${Main.data.server.address().port}/main_window/`)
             })
         }
 
@@ -133,6 +141,7 @@ const Main: MainInterface = {
             Main.data.mainWindow.show()
             Main.checkSystemPreferences((cameraAuth) => {
                 Main.data.mainWindow.webContents.send('onChangeCameraAuthForward', cameraAuth)
+                Main.createBackgroundWindow()
             })
         })
 
@@ -150,7 +159,7 @@ const Main: MainInterface = {
             height: 800,
             webPreferences: {
                 nodeIntegration: true,
-                offscreen: true,
+                offscreen: false,
             },
             show: false,
             skipTaskbar: true,
@@ -160,44 +169,28 @@ const Main: MainInterface = {
             Main.data.backgroundWindow.loadURL(MAIN_WINDOW_WEBPACK_ENTRY)
             Main.data.backgroundWindow.webContents.openDevTools()
         } else {
-            const exApp = express()
-            exApp.use(express.static(path.resolve(__dirname, '..', 'renderer')))
-            const server = exApp.listen(0, () => {
-                Main.data.backgroundWindow.loadURL(`http://localhost:${server.address().port}/main_window/`)
-            })
+            Main.data.backgroundWindow.loadURL(`http://localhost:${Main.data.server.address().port}/main_window/`)
+            Main.data.backgroundWindow.webContents.openDevTools()
         }
 
-        Main.data.backgroundWindow.once('ready-to-show', () => {
-            Main.checkSystemPreferences((cameraAuth) => {
-                Main.data.backgroundWindow.webContents.send('onChangeCameraAuthBackground', cameraAuth)
-            })
+        Main.data.backgroundWindow.once('ready-to-show', async () => {
+            Main.data.backgroundWindow.show()
+            await sleep(1000)
+            Main.data.backgroundWindow.webContents.send('onChangeCameraAuthBackground', true)
         })
     },
-    checkSystemPreferences: (() => {
-        let callCount = 0
-        const cbList = []
-        return async (cb) => {
-            cbList.push(cb)
-            callCount++
-            if (callCount !== 2) {
-                return
-            }
-            const canAccessCamera = systemPreferences.getMediaAccessStatus('camera') === 'granted'
-            if (canAccessCamera) {
+    async checkSystemPreferences(cb) {
+        const canAccessCamera = systemPreferences.getMediaAccessStatus('camera') === 'granted'
+        if (canAccessCamera) {
+            await sleep(1000)
+            cb(true)
+        } else {
+            systemPreferences.askForMediaAccess('camera').then(async (cameraAuth: boolean) => {
                 await sleep(1000)
-                cbList.forEach((cb) => {
-                    cb(true)
-                })
-            } else {
-                systemPreferences.askForMediaAccess('camera').then(async (cameraAuth: boolean) => {
-                    await sleep(1000)
-                    cbList.forEach((cb) => {
-                        cb(cameraAuth)
-                    })
-                })
-            }
+                cb(cameraAuth)
+            })
         }
-    })(),
+    },
     showNotification() {
         const isInSnooze = new Date().getTime() - Main.data.openNotificationTimeStamp < Main.data.snoozeTime * 1000
         if (isInSnooze) {

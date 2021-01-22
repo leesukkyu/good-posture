@@ -39,9 +39,11 @@ const Renderer: RendererInterface = {
             Renderer.data.stream = stream
         }
         try {
-            ipcRenderer.on('onChangeMediaDevice', (e, payload) => {
-                getWebcamStream(payload)
+            ipcRenderer.on('onChangeMediaDevice', (e, mediaDeviceOpt) => {
+                console.log('미디어 체인지')
+                getWebcamStream(mediaDeviceOpt)
             })
+            ipcRenderer.send('onRequestMediaDeviceOpt')
         } catch (err) {
             CustomError.dispatch(err)
         }
