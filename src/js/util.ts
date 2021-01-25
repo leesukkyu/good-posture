@@ -14,3 +14,5 @@ export const checkLocalStorageSpace = (): boolean => {
 export const translateTimeStamp = (timeStamp: number): string => {
     return `${Math.floor(timeStamp / 60)}분 ${timeStamp % 60}초`
 }
+
+export const textAnimation = () => {}

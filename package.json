@@ -19,7 +19,9 @@
     "license": "MIT",
     "config": {
         "forge": {
-            "packagerConfig": {},
+            "packagerConfig": {
+                "icon": "/Users/user/Desktop/git/good-posture/src/assets/icon.icns"
+            },
             "makers": [
                 {
                     "name": "@electron-forge/maker-squirrel",

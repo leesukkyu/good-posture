@@ -15,20 +15,25 @@ interface RendererInterface {
     data: {
         $videoElement: HTMLVideoElement
         stream: MediaStream
+        stopLoop: boolean
     }
     init: () => void
     initCamera: () => void
-    app: () => void
+    app: {
+        init: () => Promise<void>
+        start: () => Promise<void>
+    }
 }
 
 const Renderer: RendererInterface = {
     data: {
         $videoElement: <HTMLVideoElement>document.getElementById('video'),
         stream: null,
+        stopLoop: false,
     },
     init() {
         Renderer.initCamera()
-        Renderer.app()
+        Renderer.app.init()
     },
 
     // 카메라 관리
@@ -40,8 +45,14 @@ const Renderer: RendererInterface = {
         }
         try {
             ipcRenderer.on('onChangeMediaDevice', (e, mediaDeviceOpt) => {
-                console.log('미디어 체인지')
                 getWebcamStream(mediaDeviceOpt)
+            })
+            ipcRenderer.on('onRequestStop', (e, mediaDeviceOpt) => {
+                Renderer.data.stopLoop = true
+            })
+            ipcRenderer.on('onRequestRestart', (e, mediaDeviceOpt) => {
+                Renderer.data.stopLoop = false
+                Renderer.app.start()
             })
             ipcRenderer.send('onRequestMediaDeviceOpt')
         } catch (err) {
@@ -50,16 +61,14 @@ const Renderer: RendererInterface = {
     },
 
     // 텐서플로 관리
-    async app() {
-        let stopLoop = false
-
+    app: (() => {
         let classifier: knnClassifier.KNNClassifier = knnClassifier.create()
 
         let responsiveLevel = 0
 
         let currentStatus: boolean
 
-        const net = await mobilenet.load()
+        let net = null
 
         ipcRenderer.on('onChangeLocalstorage', () => {
             classifier.dispose()
@@ -132,7 +141,7 @@ const Renderer: RendererInterface = {
 
         const start = async () => {
             while (true) {
-                if (stopLoop) {
+                if (Renderer.data.stopLoop) {
                     break
                 }
                 if (classifier.getNumClasses() > 0) {
@@ -148,14 +157,18 @@ const Renderer: RendererInterface = {
             }
         }
 
-        const stop = () => {
-            stopLoop = true
+        const init = async () => {
+            net = await mobilenet.load()
+            setResponsiveLevel()
+            load()
+            start()
         }
 
-        setResponsiveLevel()
-        load()
-        start()
-    },
+        return {
+            init,
+            start,
+        }
+    })(),
 }
 
 export default Renderer

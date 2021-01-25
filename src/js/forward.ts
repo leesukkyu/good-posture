@@ -14,14 +14,17 @@ const {ipcRenderer} = electron
 interface RendererInterface {
     data: {
         $videoSelect: HTMLSelectElement
-        $console: HTMLElement
-        $statusBox: HTMLElement
+        $consoleText: HTMLElement
+        $statusText: HTMLElement
         $responsiveLevel: HTMLInputElement
         $responsiveLevelText: HTMLElement
         $videoElement: HTMLVideoElement
         $snoozeTime: HTMLInputElement
         $snoozeTimeText: HTMLElement
+        $audio: HTMLAudioElement
         stream: MediaStream
+        $goodStatusImage: HTMLImageElement
+        $badStatusImage: HTMLImageElement
     }
     init: () => void
     initCamera: () => void
@@ -31,21 +34,31 @@ interface RendererInterface {
 const Renderer: RendererInterface = {
     data: {
         $videoSelect: <HTMLSelectElement>document.getElementById('video-device-select'),
-        $console: <HTMLElement>document.getElementById('console'),
-        $statusBox: <HTMLElement>document.getElementById('status-box'),
+        $consoleText: <HTMLElement>document.getElementById('console-text'),
+        $statusText: <HTMLElement>document.getElementById('status-text'),
         $videoElement: <HTMLVideoElement>document.getElementById('video'),
         $responsiveLevel: <HTMLInputElement>document.getElementById('responsive-level'),
         $responsiveLevelText: <HTMLElement>document.getElementById('responsive-level-translate-text'),
         $snoozeTime: <HTMLInputElement>document.getElementById('snooze-time'),
         $snoozeTimeText: <HTMLElement>document.getElementById('snooze-time-translate-text'),
+        $audio: <HTMLAudioElement>document.getElementById('audio'),
+        $goodStatusImage: <HTMLImageElement>document.getElementById('good-status-image'),
+        $badStatusImage: <HTMLImageElement>document.getElementById('bad-status-image'),
         stream: null,
     },
     async init() {
         await Renderer.initCamera()
         await Renderer.app()
         ipcRenderer.on('onChangeStatus', (e, status) => {
-            Renderer.data.$statusBox.innerText = status
+            const isGoodStatus = status === MODEL_TYPE.GOOD
+            Renderer.data.$goodStatusImage.style.display = isGoodStatus ? 'inline-block' : 'none'
+            Renderer.data.$badStatusImage.style.display = isGoodStatus ? 'none' : 'inline-block'
+            Renderer.data.$statusText.innerText = status
         })
+        ipcRenderer.on('onPlayAlarmSound', () => {
+            Renderer.data.$audio.play()
+        })
+
         document.getElementById('loading-wrap').remove()
     },
 
@@ -165,7 +178,11 @@ const Renderer: RendererInterface = {
                 const activation = net.infer(img, true)
                 classifier.addExample(activation, classId)
                 img.dispose()
-                document.getElementById('console').innerText += `${classId} 이미지 추가\n`
+                Renderer.data.$consoleText.innerText = `${classId} 이미지 추가`
+                Renderer.data.$consoleText.className = 'console-text'
+                setTimeout(() => {
+                    Renderer.data.$consoleText.className = 'console-text typing-animation'
+                }, 1)
                 tensorSave()
             } else {
                 console.log('스토리지 꽉찼다.')
@@ -177,8 +194,8 @@ const Renderer: RendererInterface = {
             Promise.resolve().then(() => {
                 classifier.dispose()
                 classifier = knnClassifier.create()
-                Renderer.data.$console.innerText = ''
-                Renderer.data.$statusBox.innerText = ''
+                Renderer.data.$consoleText.innerText = ''
+                Renderer.data.$statusText.innerText = ''
                 localStorage.clear()
                 onChangeLocalstorage()
             })

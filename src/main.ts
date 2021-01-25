@@ -1,5 +1,5 @@
 import {app, BrowserWindow, Notification, systemPreferences, ipcMain, Menu, Tray} from 'electron'
-import {NOTIFICATION_OPT, MODEL_TYPE} from './ini'
+import {NOTIFICATION_OPT} from './ini'
 import path from 'path'
 import express from 'express'
 import {Server} from 'http'
@@ -32,6 +32,8 @@ interface MainInterface {
         forceQuit: boolean
         mediaDeviceOpt: unknown
         server: Server
+        sound: boolean
+        beforeRequestMediaDeviceFromBackground: boolean
     }
     init: () => void
     createForwardWindow: () => void
@@ -51,6 +53,8 @@ const Main: MainInterface = {
         forceQuit: false,
         mediaDeviceOpt: null,
         server: null,
+        sound: false,
+        beforeRequestMediaDeviceFromBackground: true,
     },
     init() {
         ipcMain.on('notification', () => {
@@ -59,10 +63,14 @@ const Main: MainInterface = {
 
         ipcMain.on('onChangeMediaDevice', (e, mediaDeviceOpt) => {
             Main.data.mediaDeviceOpt = mediaDeviceOpt
+            if (Main.data.beforeRequestMediaDeviceFromBackground) {
+                return
+            }
             Main.data.backgroundWindow.webContents.send('onChangeMediaDevice', mediaDeviceOpt)
         })
 
         ipcMain.on('onRequestMediaDeviceOpt', () => {
+            Main.data.beforeRequestMediaDeviceFromBackground = false
             Main.data.backgroundWindow.webContents.send('onChangeMediaDevice', Main.data.mediaDeviceOpt)
         })
 
@@ -102,14 +110,55 @@ const Main: MainInterface = {
 
         app.whenReady()
             .then(() => {
-                tray = new Tray(path.resolve(__dirname, '..', 'renderer/assets/icon.png'))
+                const trayIconPath = path.resolve(__dirname, 'assets/icon_tray.png')
+                tray = new Tray(trayIconPath)
                 tray.setTitle('')
+                const contextMenu = Menu.buildFromTemplate([
+                    {
+                        label: '감지',
+                        type: 'checkbox',
+                        checked: true,
+                        click: (menuItem) => {
+                            if (menuItem.checked) {
+                                Main.data.backgroundWindow.webContents.send(
+                                    'onRequestRestart',
+                                    Main.data.mediaDeviceOpt,
+                                )
+                            } else {
+                                Main.data.backgroundWindow.webContents.send('onRequestStop')
+                            }
+                        },
+                    },
+                    {
+                        label: '소리',
+                        checked: false,
+                        type: 'checkbox',
+                        click: (menuItem) => {
+                            Main.data.sound = menuItem.checked
+                        },
+                    },
+                    {
+                        label: '설정',
+                        click: () => {
+                            Main.data.mainWindow.show()
+                        },
+                    },
+                    {
+                        label: '종료',
+                        click: () => {
+                            app.quit()
+                        },
+                    },
+                ])
+                tray.setToolTip('기린이')
+                tray.setContextMenu(contextMenu)
             })
             .then(() => {
+                const notificationIconPath = path.resolve(__dirname, 'assets/notification.png')
                 Main.data.notification = new Notification({
                     title: NOTIFICATION_OPT.TITLE,
                     body: NOTIFICATION_OPT.BODY,
-                    icon: path.resolve(__dirname, '..', 'renderer/assets/icon.png'),
+                    icon: notificationIconPath,
                 })
             })
             .then(() => {
@@ -119,7 +168,7 @@ const Main: MainInterface = {
     createForwardWindow() {
         Main.data.mainWindow = new BrowserWindow({
             title: 'forward',
-            width: 1200,
+            width: 500,
             height: 800,
             webPreferences: {
                 nodeIntegration: true,
@@ -204,6 +253,7 @@ const Main: MainInterface = {
         }
         Main.data.openNotificationTimeStamp = new Date().getTime()
         Main.data.notification.show()
+        Main.data.sound && Main.data.mainWindow.webContents.send('onPlayAlarmSound')
     },
 }
 
