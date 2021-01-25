@@ -109,7 +109,6 @@
         "electron-squirrel-startup": "^1.0.0",
         "http": "0.0.1-security",
         "lodash": "^4.17.20",
-        "net": "^1.0.2",
         "promise-worker": "^2.0.1"
     }
 }
