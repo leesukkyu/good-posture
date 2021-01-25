@@ -8,7 +8,15 @@ export const NOTIFICATION_OPT = {
     BODY: '바른자세를 유지해주세요.',
 }
 
+export const WINDOW = {
+    WIDTH: 500,
+    HEIGHT: 600,
+}
+
+export const SERVER_PORT = 53079
+
 export default {
     MODEL_TYPE,
     NOTIFICATION_OPT,
+    WINDOW,
 }
