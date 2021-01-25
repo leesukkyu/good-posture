@@ -1,35 +1,54 @@
 <html>
     <body class="body">
         <div id="app" class="app">
-            <video id="video" autoplay playsinline muted width="224" height="224"></video>
-
-            <div>
-                <button id="good-posture" class="action-btn">좋은 자세 이미지 추가</button>
-                <button id="bad-posture" class="action-btn">나쁜 자세 이미지 추가</button>
-                <button id="clear-posture" class="action-btn">데이터 초기화</button>
+            <div class="select-box">
+                <label class="select-label">
+                    <select id="video-device-select" class="select"></select>
+                    <span class="select-arrow">
+                        <i class="arrow down"></i>
+                    </span>
+                </label>
             </div>
 
-            <div>
-                <div class="range-info-text">
-                    <span class="vm">민감도 설정</span>
-                    <span id="responsive-level-translate-text" class="range-translate-text"></span>
+            <div class="video-box">
+                <video id="video" autoplay playsinline muted width="225" height="170"></video>
+            </div>
+
+            <div class="status-box">
+                <span id="status-text" class="status-text"></span>
+                <img id="good-status-image" class="status-img" src="/assets/good_status.png" />
+                <img id="bad-status-image" class="status-img" src="/assets/bad_status.png" />
+            </div>
+
+            <div class="action-btn-box">
+                <button id="good-posture" class="action-btn good-posture">좋은 자세 이미지 추가</button>
+                <button id="bad-posture" class="action-btn bad-posture">나쁜 자세 이미지 추가</button>
+                <button id="clear-posture" class="action-btn clear-posture">데이터 초기화</button>
+            </div>
+
+            <div class="range-box">
+                <div class="range-info-text-box">
+                    <span class="range-info-text vm">민감도 설정</span>
+                    <span id="responsive-level-translate-text" class="range-translate-text vm"></span>
                     <img
-                        src="/assets/help.svg"
+                        src="/assets/help.png"
                         class="vm help-image"
                         title="민감도가 높을수록 조금만 잘못된 자세여도 알람이 울리게 됩니다."
+                        width="13px"
                     />
                 </div>
                 <input type="range" id="responsive-level" class="range-input" min="1" max="10" step="1" />
             </div>
 
-            <div>
-                <div class="range-info-text">
-                    <span class="vm">스누즈 시간 설정</span>
+            <div class="range-box">
+                <div class="range-info-text-box">
+                    <span class="range-info-text vm">스누즈 시간 설정</span>
                     <span id="snooze-time-translate-text" class="range-translate-text"></span>
                     <img
-                        src="/assets/help.svg"
+                        src="/assets/help.png"
                         class="vm help-image"
                         title="알림간의 간격입니다. 한번 알림이 울리고 다음번 알림이 울리기 전, 자세를 고쳐 잡는 시간을 정할 수 있습니다."
+                        width="13px"
                     />
                 </div>
                 <input
@@ -43,25 +62,25 @@
                 />
             </div>
 
-            <div class="select">
-                <select id="video-device-select"></select>
-            </div>
-
-            <div class="console-box">
-                <p id="status-box"></p>
-                <p id="console"></p>
-                <p class="cursor-arrow">><span class="cursor-underbar">_</span></p>
-            </div>
-        </div>
-        <div class="loading-wrap" id="loading-wrap">
-            <div class="loading-box">
-                <div class="lds-ellipsis">
-                    <div></div>
-                    <div></div>
-                    <div></div>
-                    <div></div>
+            <div class="console-wrap">
+                <div class="console-box">
+                    <span id="console-text" class="console-text"></span>
                 </div>
             </div>
+
+            <div class="loading-wrap" id="loading-wrap">
+                <div class="loading-box">
+                    <div class="lds-ellipsis">
+                        <div></div>
+                        <div></div>
+                        <div></div>
+                        <div></div>
+                    </div>
+                </div>
+            </div>
+            <audio id="audio" class="audio">
+                <source src="/assets/Ping.mp3" type="audio/mpeg" />
+            </audio>
         </div>
     </body>
 </html>
