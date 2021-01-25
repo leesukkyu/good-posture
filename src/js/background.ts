@@ -3,7 +3,7 @@ import * as tf from '@tensorflow/tfjs'
 import * as mobilenet from '@tensorflow-models/mobilenet'
 import * as knnClassifier from '@tensorflow-models/knn-classifier'
 import * as electron from 'electron'
-import {MODEL_TYPE} from '../ini'
+import {LABEL_TYPE} from '../ini'
 import CustomError from './error'
 import '../styles/index.scss'
 
@@ -17,11 +17,16 @@ interface RendererInterface {
         stream: MediaStream
         stopLoop: boolean
     }
+    onChangeStatus: (status: string) => void
+    onRequestNotification: () => void
+    setListener: () => void
     init: () => void
     initCamera: () => void
     app: {
         init: () => Promise<void>
         start: () => Promise<void>
+        onChangeLocalstorage: () => void
+        onChangeResponsiveLevel: () => void
     }
 }
 
@@ -31,54 +36,68 @@ const Renderer: RendererInterface = {
         stream: null,
         stopLoop: false,
     },
+    onChangeStatus(status) {
+        ipcRenderer.send('onChangeStatus', status)
+    },
+    onRequestNotification() {
+        ipcRenderer.send('notification')
+    },
+    setListener() {
+        ipcRenderer.on('onChangeMediaDevice', async (e, mediaDeviceOpt) => {
+            const stream = await navigator.mediaDevices.getUserMedia(mediaDeviceOpt)
+            Renderer.data.$videoElement.srcObject = stream
+            Renderer.data.stream = stream
+        })
+        ipcRenderer.on('onRequestStop', () => {
+            Renderer.data.stopLoop = true
+        })
+        ipcRenderer.on('onRequestRestart', () => {
+            Renderer.data.stopLoop = false
+            Renderer.app.start()
+        })
+        ipcRenderer.on('onChangeLocalstorage', () => {
+            Renderer.app.onChangeLocalstorage()
+        })
+        ipcRenderer.on('onChangeResponsiveLevel', () => {
+            Renderer.app.onChangeResponsiveLevel()
+        })
+    },
     init() {
+        Renderer.setListener()
         Renderer.initCamera()
         Renderer.app.init()
     },
-
     // 카메라 관리
     async initCamera() {
-        const getWebcamStream = async (options) => {
-            const stream = await navigator.mediaDevices.getUserMedia(options)
-            Renderer.data.$videoElement.srcObject = stream
-            Renderer.data.stream = stream
-        }
-        try {
-            ipcRenderer.on('onChangeMediaDevice', (e, mediaDeviceOpt) => {
-                getWebcamStream(mediaDeviceOpt)
-            })
-            ipcRenderer.on('onRequestStop', (e, mediaDeviceOpt) => {
-                Renderer.data.stopLoop = true
-            })
-            ipcRenderer.on('onRequestRestart', (e, mediaDeviceOpt) => {
-                Renderer.data.stopLoop = false
-                Renderer.app.start()
-            })
-            ipcRenderer.send('onRequestMediaDeviceOpt')
-        } catch (err) {
-            CustomError.dispatch(err)
-        }
+        ipcRenderer.send('onRequestMediaDeviceOpt')
     },
 
     // 텐서플로 관리
     app: (() => {
-        let classifier: knnClassifier.KNNClassifier = knnClassifier.create()
+        let $videoElement
+
+        let classifier: knnClassifier.KNNClassifier
 
         let responsiveLevel = 0
 
-        let currentStatus: boolean
+        let prevStatus: boolean
 
         let net = null
 
-        ipcRenderer.on('onChangeLocalstorage', () => {
+        const calcResponsiveLevel = (newResponsiveLevel) => {
+            const data = +newResponsiveLevel
+            return 1 - (data ? data / 10 : 7 / 10)
+        }
+
+        const onChangeLocalstorage = () => {
             classifier.dispose()
             classifier = knnClassifier.create()
             load()
-        })
+        }
 
-        ipcRenderer.on('onChangeResponsiveLevel', () => {
+        const onChangeResponsiveLevel = () => {
             responsiveLevel = calcResponsiveLevel(localStorage.getItem('responsiveLevel'))
-        })
+        }
 
         const load = () => {
             const t1Data = localStorage.getItem('t1Data')
@@ -90,12 +109,12 @@ const Renderer: RendererInterface = {
             if (t1Data && t1Shape && t1DType && t2Data && t2Shape && t2DType) {
                 try {
                     classifier.setClassifierDataset({
-                        [MODEL_TYPE.GOOD]: tf.tensor(
+                        [LABEL_TYPE.GOOD]: tf.tensor(
                             t1Data.split(',').map((item) => +item),
                             [+t1Shape.split(',')[0], +t1Shape.split(',')[1]],
                             t1DType as dType,
                         ),
-                        [MODEL_TYPE.BAD]: tf.tensor(
+                        [LABEL_TYPE.BAD]: tf.tensor(
                             t2Data.split(',').map((item) => +item),
                             [+t2Shape.split(',')[0], +t2Shape.split(',')[1]],
                             t2DType as dType,
@@ -115,28 +134,16 @@ const Renderer: RendererInterface = {
             })
         }
 
-        const checkStatus = (result) => {
-            const isBad = result.label === MODEL_TYPE.BAD
-            if (currentStatus !== isBad) {
-                currentStatus = isBad
-                ipcRenderer.send('onChangeStatus', currentStatus ? MODEL_TYPE.BAD : MODEL_TYPE.GOOD)
+        const checkStatus = ({label, confidences}) => {
+            if (label !== prevStatus) {
+                prevStatus = label
+                Renderer.onChangeStatus(label)
             }
-            if (!isBad) {
+
+            if (label === LABEL_TYPE.GOOD) {
                 return false
             }
-            return responsiveLevel <= result.confidences[result.label]
-        }
-
-        const setResponsiveLevel = () => {
-            const newResponsiveLevel = localStorage.getItem('responsiveLevel')
-            responsiveLevel = calcResponsiveLevel(newResponsiveLevel)
-        }
-
-        const calcResponsiveLevel = (newResponsiveLevel) => {
-            let data = +newResponsiveLevel
-            data = data ? data / 10 : 7 / 10
-            data = 1 - data
-            return data
+            return responsiveLevel <= confidences[label]
         }
 
         const start = async () => {
@@ -145,11 +152,10 @@ const Renderer: RendererInterface = {
                     break
                 }
                 if (classifier.getNumClasses() > 0) {
-                    const img = tf.browser.fromPixels(Renderer.data.$videoElement)
-                    const activation = net.infer(img, true)
-                    const result = await classifier.predictClass(activation)
+                    const img = tf.browser.fromPixels($videoElement)
+                    const result = await classifier.predictClass(net.infer(img, true))
                     if (checkStatus(result)) {
-                        ipcRenderer.send('notification')
+                        Renderer.onRequestNotification()
                     }
                     img.dispose()
                 }
@@ -158,8 +164,10 @@ const Renderer: RendererInterface = {
         }
 
         const init = async () => {
+            $videoElement = Renderer.data.$videoElement
+            classifier = knnClassifier.create()
             net = await mobilenet.load()
-            setResponsiveLevel()
+            responsiveLevel = calcResponsiveLevel(localStorage.getItem('responsiveLevel'))
             load()
             start()
         }
@@ -167,6 +175,8 @@ const Renderer: RendererInterface = {
         return {
             init,
             start,
+            onChangeLocalstorage,
+            onChangeResponsiveLevel,
         }
     })(),
 }

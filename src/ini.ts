@@ -1,4 +1,4 @@
-export const MODEL_TYPE = {
+export const LABEL_TYPE = {
     GOOD: '좋은 자세',
     BAD: '나쁜 자세',
 }
@@ -16,7 +16,7 @@ export const WINDOW = {
 export const SERVER_PORT = 53079
 
 export default {
-    MODEL_TYPE,
+    LABEL_TYPE,
     NOTIFICATION_OPT,
     WINDOW,
 }

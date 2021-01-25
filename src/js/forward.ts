@@ -3,7 +3,7 @@ import * as tf from '@tensorflow/tfjs'
 import * as mobilenet from '@tensorflow-models/mobilenet'
 import * as knnClassifier from '@tensorflow-models/knn-classifier'
 import * as electron from 'electron'
-import {MODEL_TYPE} from '../ini'
+import {LABEL_TYPE} from '../ini'
 import {checkLocalStorageSpace, translateTimeStamp} from './util'
 import CustomError from './error'
 import {dType} from '../types'
@@ -50,7 +50,7 @@ const Renderer: RendererInterface = {
         await Renderer.initCamera()
         await Renderer.app()
         ipcRenderer.on('onChangeStatus', (e, status) => {
-            const isGoodStatus = status === MODEL_TYPE.GOOD
+            const isGoodStatus = status === LABEL_TYPE.GOOD
             Renderer.data.$goodStatusImage.style.display = isGoodStatus ? 'inline-block' : 'none'
             Renderer.data.$badStatusImage.style.display = isGoodStatus ? 'none' : 'inline-block'
             Renderer.data.$statusText.innerText = status
@@ -124,18 +124,18 @@ const Renderer: RendererInterface = {
         const tensorSave = () => {
             const dataSet = classifier.getClassifierDataset()
 
-            if (dataSet[MODEL_TYPE.GOOD]) {
-                const t1Data = dataSet[MODEL_TYPE.GOOD].dataSync()
-                const t1Shape = dataSet[MODEL_TYPE.GOOD].shape
-                const t1DType = dataSet[MODEL_TYPE.GOOD].dtype
+            if (dataSet[LABEL_TYPE.GOOD]) {
+                const t1Data = dataSet[LABEL_TYPE.GOOD].dataSync()
+                const t1Shape = dataSet[LABEL_TYPE.GOOD].shape
+                const t1DType = dataSet[LABEL_TYPE.GOOD].dtype
                 localStorage.setItem('t1Data', t1Data.toString())
                 localStorage.setItem('t1Shape', t1Shape.toString())
                 localStorage.setItem('t1DType', t1DType)
             }
-            if (dataSet[MODEL_TYPE.BAD]) {
-                const t2Data = dataSet[MODEL_TYPE.BAD].dataSync()
-                const t2Shape = dataSet[MODEL_TYPE.BAD].shape
-                const t2DType = dataSet[MODEL_TYPE.BAD].dtype
+            if (dataSet[LABEL_TYPE.BAD]) {
+                const t2Data = dataSet[LABEL_TYPE.BAD].dataSync()
+                const t2Shape = dataSet[LABEL_TYPE.BAD].shape
+                const t2DType = dataSet[LABEL_TYPE.BAD].dtype
                 localStorage.setItem('t2Data', t2Data.toString())
                 localStorage.setItem('t2Shape', t2Shape.toString())
                 localStorage.setItem('t2DType', t2DType)
@@ -154,12 +154,12 @@ const Renderer: RendererInterface = {
             if (t1Data && t1Shape && t1DType && t2Data && t2Shape && t2DType) {
                 try {
                     classifier.setClassifierDataset({
-                        [MODEL_TYPE.GOOD]: tf.tensor(
+                        [LABEL_TYPE.GOOD]: tf.tensor(
                             t1Data.split(',').map((item) => +item),
                             [+t1Shape.split(',')[0], +t1Shape.split(',')[1]],
                             t1DType as dType,
                         ),
-                        [MODEL_TYPE.BAD]: tf.tensor(
+                        [LABEL_TYPE.BAD]: tf.tensor(
                             t2Data.split(',').map((item) => +item),
                             [+t2Shape.split(',')[0], +t2Shape.split(',')[1]],
                             t2DType as dType,
@@ -203,8 +203,8 @@ const Renderer: RendererInterface = {
 
         // 리스너 설정
         const addEventListener = () => {
-            document.getElementById('good-posture').addEventListener('click', () => addModel(MODEL_TYPE.GOOD))
-            document.getElementById('bad-posture').addEventListener('click', () => addModel(MODEL_TYPE.BAD))
+            document.getElementById('good-posture').addEventListener('click', () => addModel(LABEL_TYPE.GOOD))
+            document.getElementById('bad-posture').addEventListener('click', () => addModel(LABEL_TYPE.BAD))
             document.getElementById('clear-posture').addEventListener('click', () => {
                 clearModel()
             })

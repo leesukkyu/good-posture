@@ -1,8 +1,8 @@
 import {app, BrowserWindow, Notification, systemPreferences, ipcMain, Menu, Tray} from 'electron'
-import {NOTIFICATION_OPT, WINDOW, SERVER_PORT} from './ini'
 import path from 'path'
 import express from 'express'
 import {Server} from 'http'
+import {NOTIFICATION_OPT, WINDOW, SERVER_PORT} from './ini'
 
 declare const MAIN_WINDOW_WEBPACK_ENTRY: string
 
