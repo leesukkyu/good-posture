@@ -1,21 +1,18 @@
 import {app, BrowserWindow, Notification, systemPreferences, ipcMain, Menu, Tray} from 'electron'
-import {NOTIFICATION_OPT} from './ini'
+import {NOTIFICATION_OPT, WINDOW, SERVER_PORT} from './ini'
 import path from 'path'
 import express from 'express'
 import {Server} from 'http'
-import {AddressInfo} from 'net'
 
 declare const MAIN_WINDOW_WEBPACK_ENTRY: string
-
-let tray
 
 if (require('electron-squirrel-startup')) {
     app.quit()
 }
 
-const isDebug = () => {
+const isDebug = (() => {
     return process.env.npm_lifecycle_event === 'start'
-}
+})()
 
 const sleep = (ms) => {
     return new Promise((r) => setTimeout(r, ms))
@@ -36,6 +33,8 @@ interface MainInterface {
         beforeRequestMediaDeviceFromBackground: boolean
     }
     init: () => void
+    setListener: () => void
+    createTray: () => void
     createForwardWindow: () => void
     createBackgroundWindow: () => void
     checkSystemPreferences: (cb: (cameraAuth: boolean) => void) => void
@@ -57,6 +56,10 @@ const Main: MainInterface = {
         beforeRequestMediaDeviceFromBackground: true,
     },
     init() {
+        Main.setListener()
+        app.whenReady().then(Main.createTray).then(Main.createForwardWindow)
+    },
+    setListener() {
         ipcMain.on('notification', () => {
             Main.showNotification()
         })
@@ -66,19 +69,31 @@ const Main: MainInterface = {
             if (Main.data.beforeRequestMediaDeviceFromBackground) {
                 return
             }
+            if (Main.data.backgroundWindow.isDestroyed()) {
+                return
+            }
             Main.data.backgroundWindow.webContents.send('onChangeMediaDevice', mediaDeviceOpt)
         })
 
         ipcMain.on('onRequestMediaDeviceOpt', () => {
+            if (Main.data.backgroundWindow.isDestroyed()) {
+                return
+            }
             Main.data.beforeRequestMediaDeviceFromBackground = false
             Main.data.backgroundWindow.webContents.send('onChangeMediaDevice', Main.data.mediaDeviceOpt)
         })
 
         ipcMain.on('onChangeLocalstorage', () => {
+            if (Main.data.backgroundWindow.isDestroyed()) {
+                return
+            }
             Main.data.backgroundWindow.webContents.send('onChangeLocalstorage')
         })
 
         ipcMain.on('onChangeResponsiveLevel', () => {
+            if (Main.data.backgroundWindow.isDestroyed()) {
+                return
+            }
             Main.data.backgroundWindow.webContents.send('onChangeResponsiveLevel')
         })
 
@@ -87,6 +102,9 @@ const Main: MainInterface = {
         })
 
         ipcMain.on('onChangeStatus', (e, status) => {
+            if (Main.data.mainWindow.isDestroyed()) {
+                return
+            }
             Main.data.mainWindow.webContents.send('onChangeStatus', status)
         })
 
@@ -107,86 +125,68 @@ const Main: MainInterface = {
         app.on('before-quit', function () {
             Main.data.forceQuit = true
         })
-
-        app.whenReady()
-            .then(() => {
-                const trayIconPath = path.resolve(__dirname, 'assets/icon_tray.png')
-                tray = new Tray(trayIconPath)
-                tray.setTitle('')
-                const contextMenu = Menu.buildFromTemplate([
-                    {
-                        label: '감지',
-                        type: 'checkbox',
-                        checked: true,
-                        click: (menuItem) => {
-                            if (menuItem.checked) {
-                                Main.data.backgroundWindow.webContents.send(
-                                    'onRequestRestart',
-                                    Main.data.mediaDeviceOpt,
-                                )
-                            } else {
-                                Main.data.backgroundWindow.webContents.send('onRequestStop')
-                            }
-                        },
-                    },
-                    {
-                        label: '소리',
-                        checked: false,
-                        type: 'checkbox',
-                        click: (menuItem) => {
-                            Main.data.sound = menuItem.checked
-                        },
-                    },
-                    {
-                        label: '설정',
-                        click: () => {
-                            Main.data.mainWindow.show()
-                        },
-                    },
-                    {
-                        label: '종료',
-                        click: () => {
-                            app.quit()
-                        },
-                    },
-                ])
-                tray.setToolTip('기린이')
-                tray.setContextMenu(contextMenu)
-            })
-            .then(() => {
-                const notificationIconPath = path.resolve(__dirname, 'assets/notification.png')
-                Main.data.notification = new Notification({
-                    title: NOTIFICATION_OPT.TITLE,
-                    body: NOTIFICATION_OPT.BODY,
-                    icon: notificationIconPath,
-                })
-            })
-            .then(() => {
-                Main.createForwardWindow()
-            })
+    },
+    createTray() {
+        Main.data.tray = new Tray(path.resolve(__dirname, 'assets/icon_tray.png'))
+        const contextMenu = Menu.buildFromTemplate([
+            {
+                label: '감지',
+                type: 'checkbox',
+                checked: true,
+                click: (menuItem) => {
+                    if (menuItem.checked) {
+                        Main.createForwardWindow()
+                    } else {
+                        Main.data.mainWindow.destroy()
+                        Main.data.backgroundWindow.destroy()
+                    }
+                },
+            },
+            {
+                label: '소리',
+                checked: false,
+                type: 'checkbox',
+                click: (menuItem) => {
+                    Main.data.sound = menuItem.checked
+                },
+            },
+            {
+                label: '설정',
+                click: () => {
+                    Main.data.mainWindow.show()
+                },
+            },
+            {
+                label: '종료',
+                click: () => {
+                    app.quit()
+                },
+            },
+        ])
+        Main.data.tray.setTitle('')
+        Main.data.tray.setToolTip('기린이')
+        Main.data.tray.setContextMenu(contextMenu)
     },
     createForwardWindow() {
         Main.data.mainWindow = new BrowserWindow({
             title: 'forward',
-            width: 500,
-            height: 800,
+            width: WINDOW.WIDTH,
+            height: WINDOW.HEIGHT,
             webPreferences: {
                 nodeIntegration: true,
             },
             show: false,
-            skipTaskbar: true,
+            skipTaskbar: false,
         })
 
-        if (isDebug()) {
+        if (isDebug) {
             Main.data.mainWindow.loadURL(MAIN_WINDOW_WEBPACK_ENTRY)
             Main.data.mainWindow.webContents.openDevTools()
         } else {
-            const exApp = express()
-            exApp.use(express.static(path.resolve(__dirname, '..', 'renderer')))
-            Main.data.server = exApp.listen(53079, () => {
-                Main.data.mainWindow.loadURL(
-                    `http://localhost:${(Main.data.server.address() as AddressInfo).port}/main_window/`,
-                )
+            const expressApp = express()
+            expressApp.use(express.static(path.resolve(__dirname, '..', 'renderer')))
+            Main.data.server = expressApp.listen(SERVER_PORT, () => {
+                Main.data.mainWindow.loadURL(`http://localhost:${SERVER_PORT}/main_window/`)
             })
         }
 
@@ -212,24 +212,20 @@ const Main: MainInterface = {
             height: 800,
             webPreferences: {
                 nodeIntegration: true,
-                offscreen: false,
+                offscreen: !isDebug,
             },
             show: false,
-            skipTaskbar: true,
         })
 
-        if (isDebug()) {
+        if (isDebug) {
             Main.data.backgroundWindow.loadURL(MAIN_WINDOW_WEBPACK_ENTRY)
             Main.data.backgroundWindow.webContents.openDevTools()
         } else {
-            Main.data.backgroundWindow.loadURL(
-                `http://localhost:${(Main.data.server.address() as AddressInfo).port}/main_window/`,
-            )
-            Main.data.backgroundWindow.webContents.openDevTools()
+            Main.data.backgroundWindow.loadURL(`http://localhost:${SERVER_PORT}/main_window/`)
         }
 
         Main.data.backgroundWindow.once('ready-to-show', async () => {
-            Main.data.backgroundWindow.show()
+            isDebug && Main.data.backgroundWindow.show()
             await sleep(1000)
             Main.data.backgroundWindow.webContents.send('onChangeCameraAuthBackground', true)
         })
@@ -247,6 +243,13 @@ const Main: MainInterface = {
         }
     },
     showNotification() {
+        if (!Main.data.notification) {
+            Main.data.notification = new Notification({
+                title: NOTIFICATION_OPT.TITLE,
+                body: NOTIFICATION_OPT.BODY,
+                icon: path.resolve(__dirname, 'assets/notification.png'),
+            })
+        }
         const isInSnooze = new Date().getTime() - Main.data.openNotificationTimeStamp < Main.data.snoozeTime * 1000
         if (isInSnooze) {
             return
