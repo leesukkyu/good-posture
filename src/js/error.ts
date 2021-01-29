@@ -1,5 +1,5 @@
 class CustomError {
-    static dispatch(err): void {
+    static dispatch(err: unknown): void {
         console.log(err)
     }
 }

@@ -1,4 +1,21 @@
 <html>
+    <head>
+        <script>
+            ;(function (item) {
+                if (item.hasOwnProperty('remove')) {
+                    return
+                }
+                Object.defineProperty(item, 'remove', {
+                    configurable: true,
+                    enumerable: true,
+                    writable: true,
+                    value: function remove() {
+                        if (this.parentNode !== null) this.parentNode.removeChild(this)
+                    },
+                })
+            })(Element.prototype)
+        </script>
+    </head>
     <body class="body">
         <div id="app" class="app">
             <div class="select-box">
@@ -28,14 +45,26 @@
 
             <div class="range-box">
                 <div class="range-info-text-box">
+                    <span class="range-info-text vm">감지 시간 설정</span>
+                    <span id="check-time-translate-text" class="range-translate-text"></span>
+                    <div class="tooltip">
+                        <img src="/assets/help.png" class="vm help-image" width="13px" />
+                        <span class="tooltiptext"
+                            >몇 초에 한 번씩 자세를 점검하는지 설정합니다. 낮을수록 CPU 점유율이 올라갑니다.</span
+                        >
+                    </div>
+                </div>
+                <input type="range" id="check-time" class="range-input" min="1" max="60" step="1" placeholder="초" />
+            </div>
+
+            <div class="range-box">
+                <div class="range-info-text-box">
                     <span class="range-info-text vm">민감도 설정</span>
                     <span id="responsive-level-translate-text" class="range-translate-text vm"></span>
-                    <img
-                        src="/assets/help.png"
-                        class="vm help-image"
-                        title="민감도가 높을수록 조금만 잘못된 자세여도 알람이 울리게 됩니다."
-                        width="13px"
-                    />
+                    <div class="tooltip">
+                        <img src="/assets/help.png" class="vm help-image" width="13px" />
+                        <span class="tooltiptext">민감도가 높을수록 조금만 잘못된 자세여도 알람이 울리게 됩니다.</span>
+                    </div>
                 </div>
                 <input type="range" id="responsive-level" class="range-input" min="1" max="10" step="1" />
             </div>
@@ -44,12 +73,13 @@
                 <div class="range-info-text-box">
                     <span class="range-info-text vm">스누즈 시간 설정</span>
                     <span id="snooze-time-translate-text" class="range-translate-text"></span>
-                    <img
-                        src="/assets/help.png"
-                        class="vm help-image"
-                        title="알림간의 간격입니다. 한번 알림이 울리고 다음번 알림이 울리기 전, 자세를 고쳐 잡는 시간을 정할 수 있습니다."
-                        width="13px"
-                    />
+                    <div class="tooltip">
+                        <img src="/assets/help.png" class="vm help-image" width="13px" />
+                        <span class="tooltiptext"
+                            >알림 간의 간격입니다. 한번 알림이 울리고 다음번 알림이 울리기 전, 자세를 고쳐 잡는 시간을
+                            정할 수 있습니다.</span
+                        >
+                    </div>
                 </div>
                 <input
                     type="range"
@@ -82,8 +112,25 @@
                 <source src="/assets/Ping.mp3" type="audio/mpeg" />
             </audio>
             <div class="mail-link-box">
-                <a href="#" class="info-link">설명서</a> |
-                <a href="mailto:ansua86@gmail.com" class="mail-link">버그 제보 : ansua86@gmail.com</a>
+                <a href="mailto:ansua86@gmail.com" class="mail-link">버그 : ansua86@gmail.com</a>
+            </div>
+            <div class="manual-wrap" id="manual-wrap">
+                <ul>
+                    <li class="depth1">현재 자세를 모니터링해 줍니다.</li>
+                    <li class="depth1">나쁜 자세와 좋은 자세를 기억해서 현재 자세를 판단해 줍니다.</li>
+                    <li class="depth1">
+                        사용법
+                        <ul>
+                            <li class="depth2">좋은 자세 이미지를 4~5장 추가합니다.</li>
+                            <li class="depth2">나쁜 자세 이미지를 4~5장 추가합니다.</li>
+                            <li class="depth2">극단적인 나쁜 자세일수록 좋습니다.</li>
+                            <li class="depth2">감지 시간, 민감도, 스누즈 시간을 설정합니다.</li>
+                        </ul>
+                    </li>
+                </ul>
+                <div class="start-btn-box">
+                    <button type="button" class="start-btn" id="start-btn">시작하기</button>
+                </div>
             </div>
         </div>
     </body>

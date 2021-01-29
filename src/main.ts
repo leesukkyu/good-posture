@@ -26,11 +26,13 @@ interface MainInterface {
         mainWindow: BrowserWindow
         backgroundWindow: BrowserWindow
         tray: Tray
+        contextMenu: Menu
         forceQuit: boolean
         mediaDeviceOpt: unknown
         server: Server
         sound: boolean
         beforeRequestMediaDeviceFromBackground: boolean
+        isFirstStart: boolean
     }
     init: () => void
     setListener: () => void
@@ -49,11 +51,13 @@ const Main: MainInterface = {
         mainWindow: null,
         backgroundWindow: null,
         tray: null,
+        contextMenu: null,
         forceQuit: false,
         mediaDeviceOpt: null,
         server: null,
         sound: false,
         beforeRequestMediaDeviceFromBackground: true,
+        isFirstStart: true,
     },
     init() {
         Main.setListener()
@@ -61,6 +65,9 @@ const Main: MainInterface = {
     },
     setListener() {
         ipcMain.on('notification', () => {
+            if (Main.data.backgroundWindow.isDestroyed()) {
+                return
+            }
             Main.showNotification()
         })
 
@@ -90,6 +97,13 @@ const Main: MainInterface = {
             Main.data.backgroundWindow.webContents.send('onChangeLocalstorage')
         })
 
+        ipcMain.on('onChangeCheckTime', () => {
+            if (Main.data.backgroundWindow.isDestroyed()) {
+                return
+            }
+            Main.data.backgroundWindow.webContents.send('onChangeCheckTime')
+        })
+
         ipcMain.on('onChangeResponsiveLevel', () => {
             if (Main.data.backgroundWindow.isDestroyed()) {
                 return
@@ -98,6 +112,9 @@ const Main: MainInterface = {
         })
 
         ipcMain.on('onChangeSnoozeTime', (e, snoozeTime) => {
+            if (Main.data.backgroundWindow.isDestroyed()) {
+                return
+            }
             Main.data.snoozeTime = +snoozeTime
         })
 
@@ -116,6 +133,9 @@ const Main: MainInterface = {
 
         app.on('activate', () => {
             if (BrowserWindow.getAllWindows().length === 0) {
+                if (Main.data.contextMenu) {
+                    Main.data.contextMenu.items[0].checked = true
+                }
                 Main.createForwardWindow()
             } else if (BrowserWindow.getAllWindows().length === 2) {
                 Main.data.mainWindow.show()
@@ -128,7 +148,7 @@ const Main: MainInterface = {
     },
     createTray() {
         Main.data.tray = new Tray(path.resolve(__dirname, 'assets/icon_tray.png'))
-        const contextMenu = Menu.buildFromTemplate([
+        Main.data.contextMenu = Menu.buildFromTemplate([
             {
                 label: '감지',
                 type: 'checkbox',
@@ -153,7 +173,13 @@ const Main: MainInterface = {
             {
                 label: '설정',
                 click: () => {
-                    Main.data.mainWindow.show()
+                    if (Main.data.backgroundWindow.isDestroyed()) {
+                        Main.data.contextMenu.items[0].checked = true
+                        Main.createForwardWindow()
+                        return
+                    } else {
+                        Main.data.mainWindow.show()
+                    }
                 },
             },
             {
@@ -165,11 +191,11 @@ const Main: MainInterface = {
         ])
         Main.data.tray.setTitle('')
         Main.data.tray.setToolTip('기린이')
-        Main.data.tray.setContextMenu(contextMenu)
+        Main.data.tray.setContextMenu(Main.data.contextMenu)
     },
     createForwardWindow() {
         Main.data.mainWindow = new BrowserWindow({
-            title: 'forward',
+            title: '오지랖프',
             width: WINDOW.WIDTH,
             height: WINDOW.HEIGHT,
             webPreferences: {
@@ -177,17 +203,23 @@ const Main: MainInterface = {
             },
             show: false,
             skipTaskbar: false,
+            resizable: isDebug,
         })
 
         if (isDebug) {
             Main.data.mainWindow.loadURL(MAIN_WINDOW_WEBPACK_ENTRY)
             Main.data.mainWindow.webContents.openDevTools()
         } else {
-            const expressApp = express()
-            expressApp.use(express.static(path.resolve(__dirname, '..', 'renderer')))
-            Main.data.server = expressApp.listen(SERVER_PORT, () => {
+            if (Main.data.isFirstStart) {
+                const expressApp = express()
+                expressApp.use(express.static(path.resolve(__dirname, '..', 'renderer')))
+                Main.data.server = expressApp.listen(SERVER_PORT, () => {
+                    Main.data.isFirstStart = false
+                    Main.data.mainWindow.loadURL(`http://localhost:${SERVER_PORT}/main_window/`)
+                })
+            } else {
                 Main.data.mainWindow.loadURL(`http://localhost:${SERVER_PORT}/main_window/`)
-            })
+            }
         }
 
         Main.data.mainWindow.once('ready-to-show', () => {

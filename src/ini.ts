@@ -13,7 +13,7 @@ export const WINDOW = {
     HEIGHT: 600,
 }
 
-export const SERVER_PORT = 53079
+export const SERVER_PORT = 53078
 
 export default {
     LABEL_TYPE,

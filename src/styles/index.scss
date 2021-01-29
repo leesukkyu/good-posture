@@ -251,10 +251,93 @@ body {
         font-size: 11px;
         color: #767676;
         .info-link {
+            color: #767676;
             margin-right: 10px;
         }
         .mail-link {
+            margin-left: 10px;
+            color: #767676;
             display: inline-block;
+        }
+    }
+
+    .tooltip {
+        position: relative;
+        display: inline-block;
+        border-bottom: 1px dotted black;
+        .tooltiptext {
+            visibility: hidden;
+            width: 160px;
+            background-color: black;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1;
+        }
+        &:hover {
+            .tooltiptext {
+                visibility: visible;
+            }
+        }
+    }
+
+    .manual-wrap {
+        position: fixed;
+        left: 0px;
+        top: 0px;
+        right: 0px;
+        bottom: 0px;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 9;
+        color: #fff;
+        text-align: left;
+        padding: 15px 0 0 0;
+        display: none;
+        ul {
+            list-style: none;
+            counter-reset: steps;
+        }
+        li {
+            counter-increment: steps;
+        }
+
+        .depth1 {
+            margin: 5px 0 0 0;
+            &::before {
+                content: '📌';
+                margin-right: 0.5rem;
+                color: #ff6f00;
+            }
+        }
+        .depth2 {
+            margin: 7px 0 0 0;
+            &:first-child {
+                margin: 7px 0 0 0;
+            }
+            &::before {
+                content: 'Step ' counter(steps) ')';
+                margin-right: 0.5rem;
+                color: #ff6f00;
+            }
+        }
+        .start-btn-box {
+            text-align: center;
+            padding: 10px 0 0 0;
+            .start-btn {
+                transition: all 580ms cubic-bezier(0.22, 0, 0, 0.8);
+                width: 100px;
+                height: 40px;
+                background: #fff;
+                border: solid 2px transparent;
+                cursor: pointer;
+                &:hover {
+                    color: #ff6f00;
+                    border: solid 2px #ff6f00;
+                    border-radius: 7px;
+                }
+            }
         }
     }
 }
