@@ -2,7 +2,7 @@ import {app, BrowserWindow, Notification, systemPreferences, ipcMain, Menu, Tray
 import path from 'path'
 import express from 'express'
 import {Server} from 'http'
-import {NOTIFICATION_OPT, WINDOW, SERVER_PORT} from './ini'
+import {NOTIFICATION_OPT, WINDOW, SERVER_PORT, CONFIG} from './ini'
 
 declare const MAIN_WINDOW_WEBPACK_ENTRY: string
 
@@ -45,7 +45,7 @@ interface MainInterface {
 
 const Main: MainInterface = {
     data: {
-        snoozeTime: 10,
+        snoozeTime: CONFIG.SNOOZE_TIME,
         openNotificationTimeStamp: 0,
         notification: null,
         mainWindow: null,

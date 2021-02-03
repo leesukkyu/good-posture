@@ -3,7 +3,7 @@ import * as tf from '@tensorflow/tfjs'
 import * as mobilenet from '@tensorflow-models/mobilenet'
 import * as knnClassifier from '@tensorflow-models/knn-classifier'
 import * as electron from 'electron'
-import {LABEL_TYPE} from '../ini'
+import {LABEL_TYPE, CONFIG} from '../ini'
 import {checkLocalStorageSpace, translateTimeStamp} from './util'
 import CustomError from './error'
 import {dType} from '../types'
@@ -205,20 +205,20 @@ class App {
     }
 
     initCheckTime() {
-        const checkTime = localStorage.getItem('checkTime') || '10'
+        const checkTime = localStorage.getItem('checkTime') || `${CONFIG.CHECK_TIME}`
         Renderer.data.$checkTime.value = checkTime
         Renderer.data.$checkTimeText.innerText = checkTime
     }
 
     initResponsiveLevel() {
-        const responsiveLevel = localStorage.getItem('responsiveLevel') || '7'
+        const responsiveLevel = localStorage.getItem('responsiveLevel') || `${CONFIG.RESPONSIVE_LEVEL}`
         Renderer.data.$responsiveLevel.value = responsiveLevel
         Renderer.data.$responsiveLevelText.innerText = `${responsiveLevel}/10`
     }
 
     initSnoozeTime() {
-        const snoozeTime = localStorage.getItem('snoozeTime') || '60'
-        Renderer.data.$snoozeTime.value = snoozeTime
+        const snoozeTime = localStorage.getItem('snoozeTime') || `${CONFIG.SNOOZE_TIME}`
+        Renderer.data.$snoozeTime.value = `${snoozeTime}`
         Renderer.data.$snoozeTimeText.innerText = translateTimeStamp(+snoozeTime)
         Renderer.onChangeSnoozeTime(+snoozeTime)
     }

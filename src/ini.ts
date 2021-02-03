@@ -13,10 +13,17 @@ export const WINDOW = {
     HEIGHT: 600,
 }
 
+export const CONFIG = {
+    CHECK_TIME: 1,
+    RESPONSIVE_LEVEL: 10,
+    SNOOZE_TIME: 10,
+}
+
 export const SERVER_PORT = 53078
 
 export default {
     LABEL_TYPE,
     NOTIFICATION_OPT,
     WINDOW,
+    CONFIG,
 }

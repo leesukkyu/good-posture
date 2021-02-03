@@ -3,7 +3,7 @@ import * as tf from '@tensorflow/tfjs'
 import * as mobilenet from '@tensorflow-models/mobilenet'
 import * as knnClassifier from '@tensorflow-models/knn-classifier'
 import * as electron from 'electron'
-import {LABEL_TYPE} from '../ini'
+import {LABEL_TYPE, CONFIG} from '../ini'
 import '../styles/index.scss'
 
 const {ipcRenderer} = electron
@@ -106,12 +106,12 @@ class App {
 
     calcCheckTime = (newCheckTime) => {
         const data = +newCheckTime
-        return data ? data : 10
+        return data ? data : CONFIG.CHECK_TIME
     }
 
     calcResponsiveLevel = (newResponsiveLevel) => {
         const data = +newResponsiveLevel
-        return 1 - (data ? data / 10 : 7 / 10)
+        return 1 - (data ? data / 10 : CONFIG.RESPONSIVE_LEVEL / 10)
     }
 
     load() {
